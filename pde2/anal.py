@@ -1,6 +1,8 @@
 dfl=open('t.txt')
 import numpy as np
 from StringIO import StringIO
+import matplotlib as mpl
+from matplotlib import pylab
 
 dfs=[]#data frames
 ds=''

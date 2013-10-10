@@ -75,6 +75,9 @@ void dot(nt *o, nt *X1, nt *X2){
   *o=(X1[0]*X2[0])
     +(X1[1]*X2[1]);}
 
+
+
+
 //UTILS
 
 void xiyi2xy(nt* O, cg *g, it *xi, it *yi){
@@ -85,7 +88,6 @@ void xy2xiyi(it* O, cg *g, nt *x, nt *y){
 O[0]=round(*x/g->Dx);
 O[1]=round(*y/g->Dy);
 }
-
 
 
 
@@ -194,7 +196,7 @@ cg makegrid(it xn, it yn
 int main(){
 
 
-  nt Lx=1,Ly=.5;
+  nt Lx=1.000,Ly=.500;
   it nx=30,ny=15;
   cg T=makegrid(nx,ny,Lx,Ly);
 
@@ -211,8 +213,8 @@ int main(){
   //needle coords.
 #define sx .1*Lx
 #define sy .1*Ly
-#define xn .5*Lx
-#define yn .3*Ly
+#define xn .2*Lx
+#define yn .4*Ly
   nt LL[2]={ xn-.5*sx //lower left
 	     ,yn-.5*sy};
   nt UR[2]={ xn+.5*sx
@@ -224,7 +226,7 @@ int main(){
 #undef xn
 #undef yn
 
-  nt Tn=00001.000;
+  nt Tn=1;
   //set needle temp
   for(Tit =LLnXi[0];Tit <=URnXi[0]; Tit++){it Tit2;
     for(Tit2=LLnXi[1];Tit2<=URnXi[1]; Tit2++){
@@ -261,9 +263,6 @@ int main(){
 
 
 
-  //printin
-
-
   it xi,yi;
   unsigned int nf=3000;
 
@@ -277,7 +276,6 @@ int main(){
       for(xi=0;xi<(nx);xi++){
 
 	//apply boundary condition at vessel out
-	//does the order matter?
 	if((xi==URvXi[0]) && (LLvXi[1]<=yi && yi<=URvXi[1])){
 	  *at(&T2,&xi,&yi)=*lf(&T,&xi,&yi);//dT/dn=0
 	  //fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
@@ -322,10 +320,10 @@ int main(){
 		 ,&ctrdx2 ,&ctrdy2);
 	  //fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
 	}
-	//lesson learned: maybe shouldn't make fp
+	//lesson learned: fp didn't help much. could have just passed a number
 
-	if(*at(&T2,&xi,&yi)>((Tn)*1.5) || *at(&T2,&xi,&yi)<(T0*1.5)){
-	  printf("ABORTED: ridiculous T calculated");
+	if(*at(&T2,&xi,&yi)>abs((Tn)*1.5) || *at(&T2,&xi,&yi)<abs(T0*.5)){
+	  fprintf(stderr,"ABORTED: ridiculous T calculated  %f",*at(&T2,&xi,&yi));
 	  exit(1);}
 	{
 	  fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
@@ -340,7 +338,10 @@ int main(){
   
   }
 
-  //freemem
+  //cleanup
+  free(T2.u);
+  free(T.u);
+  fclose(fo);
 
 }
 
