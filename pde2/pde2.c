@@ -63,8 +63,8 @@ void del(nt *O, cg *g
 	 , it *xi, it *yi
 	 , fp dfx, fp dfy
 	 ){
-  (*dfx)(&O[0],g,xi,yi);
-  (*dfy)(&O[1],g,xi,yi);} //C is complicated!
+  (*dfx)(&O[0],g,xi,yi); //C is complicated!
+  (*dfy)(&O[1],g,xi,yi);} 
 void del2(nt *o, cg *g
 	  , it *xi, it *yi
 	 , fp dfx2, fp dfy2
@@ -153,7 +153,7 @@ void evalat(nt *o, cg *g
   //printf("\n(%d,%d):%f",*xi,*yi,*o);
        }
 
-//useless just put logic in the main loops
+/* //useless just put logic in the main loops
 void evalover(it x1, it x2
 	      ,it y1, it y2
 	      ,cg *T, cg *T2
@@ -175,7 +175,7 @@ void evalover(it x1, it x2
 	       ,dfx2 ,dfy2);      
     }
   }
-}
+} */
 
 cg makegrid(it xn, it yn
 	    ,nt Lx, nt Ly){
@@ -195,22 +195,24 @@ cg makegrid(it xn, it yn
 
 int main(){
 
-
-  nt Lx=1.000,Ly=.500;
-  it nx=30,ny=15;
+//GRID PARAMETERS
+  nt Lx=1.000,Ly=.500;    //<-PARAMS
+  it nx=30,ny=15; //<-PARAMS
   cg T=makegrid(nx,ny,Lx,Ly);
 
-  nt T0=0;
+  nt T0=0; //<-PARAMS
   it Tit;
   //set to init temp
   for(Tit=0;Tit<(T.yn*T.xn);Tit++){T.u[Tit]=T0;}
 
 
+//EQN PARAMETERS
+  nt Dt=.01;//<-PARAMS
+  nt k=.02;//<-PARAMS
 
-  nt Dt=.01;
-  nt k=.02;
-
-  //needle coords.
+ //NEEDLE PARAMETERS
+  //needle coords. 
+  // PARAMS
 #define sx .1*Lx
 #define sy .1*Ly
 #define xn .2*Lx
@@ -226,7 +228,7 @@ int main(){
 #undef xn
 #undef yn
 
-  nt Tn=1;
+  nt Tn=1; //<-PARAMS
   //set needle temp
   for(Tit =LLnXi[0];Tit <=URnXi[0]; Tit++){it Tit2;
     for(Tit2=LLnXi[1];Tit2<=URnXi[1]; Tit2++){
@@ -234,8 +236,9 @@ int main(){
 
   printf("needle at (%d,%d) (%d,%d)\n",LLnXi[0],LLnXi[1],URnXi[0],URnXi[1]);
 
-
-  //vessel coords
+//VESSEL PARAMETERS
+  //vessel coords 
+  //PARAMS
 #define a  .2*Ly
 #define yv .7*Ly
   LL[0]=0; //lower left
@@ -245,7 +248,7 @@ int main(){
   it LLvXi[2]; xy2xiyi(LLvXi,&T,&LL[0],&LL[1]);
   it URvXi[2]; xy2xiyi(URvXi,&T,&UR[0],&UR[1]);
 
-  nt vmax=1.5;
+  nt vmax=1.5; //<-PARAMS
   nt vpp[3]={vmax,a,yv};
   nt vcp[1]={0};
 
@@ -261,8 +264,6 @@ int main(){
  
   FILE *fo=fopen("t.txt","w");
 
-
-
   it xi,yi;
   unsigned int nf=3000;
 
@@ -274,6 +275,42 @@ int main(){
     fp afp;
     for(yi=0;yi<(ny);yi++){
       for(xi=0;xi<(nx);xi++){
+
+/*
+//TEST The steady state solution for any initial condition setting 
+T=1 for the left boundary, T=0 for the right boundary, 
+dT/dn=0 at y=.5 and y=0 is a straight line.  
+*/
+
+/*
+	if(yi==(ny-1)){
+	  *at(&T2,&xi,&yi)=*dn(&T,&xi,&yi);
+	}
+	else if(yi==0){
+	  *at(&T2,&xi,&yi)=*up(&T,&xi,&yi);
+	}
+	else if(xi==(nx-1)){
+	  *at(&T2,&xi,&yi)=0;//*lf(&T,&xi,&yi);
+	}
+	else if(xi==0){
+	  *at(&T2,&xi,&yi)=1;
+	}	
+	else{
+	  nt V[2]={0,0};
+	  evalat(at(&T2,&xi,&yi),&T
+		 ,&Dt
+		 ,&xi,&yi
+		 ,V
+		 ,&k
+		 ,&bwddx, &ctrdy //both shouldn't matter
+		 ,&ctrdx2 ,&ctrdy2);
+	  //fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
+	}
+	fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
+    nt *newT=T2.u, *oldT=T.u;
+    T2.u=oldT; T.u=newT; //make newT old and viceversa
+continue; 
+*/
 
 	//apply boundary condition at vessel out
 	if((xi==URvXi[0]) && (LLvXi[1]<=yi && yi<=URvXi[1])){
@@ -303,7 +340,7 @@ int main(){
 	//in needle
 	else if( (LLnXi[0]<=xi && xi<=(URnXi[0])) && 
 		 LLnXi[1]<=yi && yi<=URnXi[1]){
-	  //a waste of computing but it't not my priority
+	  //a waste of computing but it's not my priority
 	  //set needle temp
 	  *at(&T2,&xi,&yi)=Tn;
 	  //fprintf(fo,"%d %d %f\n",xi,yi,*at(&T2,&xi,&yi));
