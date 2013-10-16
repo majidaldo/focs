@@ -8,7 +8,7 @@ this code is probably longer (more complicated?) and not optimized.
 all over the place
 */
 
-
+ 
 
 typedef  float nt;// number type
 typedef unsigned int it; //index type
