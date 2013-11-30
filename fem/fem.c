@@ -68,8 +68,8 @@ matrixstruct readcoords(FILE *fp){
   matrixstruct m=makematrix(npts,2,floatt);
   mui ri,xc=0,yc=1;mf dontcare;//not storing 0 (3rd num)
   for(ri=0;ri<npts;ri++){
-    fscanf(fp, "%f %f %f",(mf*)idx(&ri,&xc,&m)
-	                 ,(mf*)idx(&ri,&yc,&m),&dontcare);
+    fscanf(fp, "%f %f %f",idx(&ri,&xc,&m)
+                         ,idx(&ri,&yc,&m),&dontcare);
   }
 
   return m;
@@ -100,7 +100,7 @@ matrixstruct readphi(FILE *fp, mui nphi){
 
   mui ri=0,c=0;
   for (ri=0;ri<nphi;ri++){
-    fscanf(fp,"%f",(mf*)idx(&ri,&c,&m));
+    fscanf(fp,"%f",idx(&ri,&c,&m));
   }
 
   return m;
@@ -122,7 +122,7 @@ void putsubmat(matrixstruct *mat, matrixstruct *submat
       abcc=*(mui*) idx(&cri, &sci ,conn);//the col index that gets a,b,or c
       abcr=*(mui*) idx(&cri, &sri ,conn);
       dst=         idx(&abcr,&abcc,mat);// ??? is this ok?
-      *dst+=(*src)*(*(mf*)idx(&cri,&zero,A))*mtiple;
+      *dst=(*src)*(*(mf*)idx(&cri,&zero,A))*mtiple;
       //printf("\n %f %u %u",*dst,abcr,abcc);
 	}}
 
@@ -130,51 +130,39 @@ void putsubmat(matrixstruct *mat, matrixstruct *submat
 
 }
 
-//stuff in putinsubmat : func area, mult, func for submat(Area)
 
-
-
-typedef struct { matrixstruct D; mf A;} dercalcout;
-dercalcout calcdernA(mui *ti,matrixstruct *conn, matrixstruct *coords){
-  //gives the derivative of element div by 2A
-  //mui ti//,ci;//ti for triangle index
-  mui ac=0,bc=1,cc=2,xc=0,yc=1;
+matrixstruct calcareas(matrixstruct *conn, matrixstruct *coords){
+  mui ti,ci;
+  mui ac=0,bc=1,cc=2,xc=0,yc=1,zero=0;
   mui a,b,c;
   mf abx,aby,acx,acy;
-  mf *n1x,*n2x,*n3x,*n1y,*n2y,*n3y;
+  mf *area;
 #define abcxy(bc,xcyc) \
-                      -(*(mf*)idx(&bc,&xcyc,coords))	\
-                      +(*(mf*)idx(&a ,&xcyc,coords))
+                      (*(mf*)idx(&bc,&xcyc,coords))	\
+                     -(*(mf*)idx(&a ,&xcyc,coords))
 
-  matrixstruct D=makematrix(conn->ncols,2,floatt);//acol for x,y
-  //for(ti=0;ti<A.nrows;ti++){
-    a=(*(mui*)idx(ti,&ac,conn));
-    b=(*(mui*)idx(ti,&bc,conn));
-    c=(*(mui*)idx(ti,&cc,conn));
+  matrixstruct A=makematrix(conn->nrows,1,floatt);
+  for(ti=0;ti<A.nrows;ti++){
+    a=(*(mui*)idx(&ti,&ac,conn));
+    b=(*(mui*)idx(&ti,&bc,conn));
+    c=(*(mui*)idx(&ti,&cc,conn));
     abx=abcxy(b,xc);
     aby=abcxy(b,yc);
     acx=abcxy(c,xc);
     acy=abcxy(c,yc);
-    n1x=(mf*)idx(&ac,&xc,&D); *n1x=-acy+aby;
-    n2x=(mf*)idx(&bc,&xc,&D); *n2x= acy;
-    n3x=(mf*)idx(&cc,&xc,&D); *n3x=-aby;
-    n1y=(mf*)idx(&ac,&yc,&D); *n1y= acx-abx;
-    n2y=(mf*)idx(&bc,&yc,&D); *n2y=-acx;
-    n3y=(mf*)idx(&cc,&yc,&D); *n3y= abx;
-
-    // }
-
-    dercalcout o;
-    o.D=D;
-    o.A=(abx*acy-acx*aby)/2.0;
-    return o;
+    area=(mf*)idx(&ti,&zero,&A);
+    *area=fabs(abx*acy-aby*acx);
+    /* abx=(*(mf*)idx(&b,&xc,coords)) */
+    /*    -(*(mf*)idx(&a,&xc,coords)) */
+    /* aby=(*(mf*)idx(&b,&yc,coords)) */
+    /*    -(*(mf*)idx(&a,&yc,coords)) */
+ 
+    }
 
 #undef abcxy
+  return A;
 }
 
-
- /* parea=(mf*)idx(&seven,&zero,&A); */
- /*    *parea=.5*(abx*acy-aby*acx) */
 
 
 
@@ -206,12 +194,12 @@ int main(){
   matrixstruct phiy=     readphi(phiyfp,coords.nrows);
 
   //global matrix
-  matrixstruct  M=makematrix(coords.nrows,coords.nrows,floatt);
-  matrixstruct Lx=makematrix(coords.nrows,1           ,floatt);
-  matrixstruct Ly=makematrix(coords.nrows,1           ,floatt);
+  matrixstruct M=makematrix(coords.nrows,coords.nrows,floatt);
   initfltmatrix(0,&M);//set 0s
-  initfltmatrix(0,&Lx);
-  initfltmatrix(0,&Ly);
+  
+  //areas
+  matrixstruct A=calcareas(&conn,&coords);
+
 
   //fill
   mf aNi[3][1]={ {1}
@@ -228,51 +216,7 @@ int main(){
   for(ri=0;ri<3;ri++){
   for(ci=0;ci<3;ci++){ v=(mf*)idx(&ri,&ci,&INiNj) ; *v=aNiNj[ri][ci];}}
 
-
-
-  //create global matrix 
-  mui cri,xc=0,yc=1,zero=0;
-  mui sri,sci;
-  mui abcr,abcc;
-  mf *src,*Mdst,*Lxdst,*Lydst;
-  mf *pphix,*pphiy;
-  mf *pDx,*pDy,*pA;
-  dercalcout AnD;
-  //connectivity loop
-  for(cri=0;cri<conn.nrows;cri++){//0,1,2,3,4,5,6,7,8,9,10....
-
-  AnD=calcdernA(&cri,&conn,&coords);// 1/2A
-  pA=&(AnD.A);printf("%f",*pA);
-
-    //loop over submat
-    for(sri=0;sri<INiNj.nrows;sri++){//0,1,2
-    for(sci=0;sci<INiNj.ncols;sci++){//0,1,2
-      src=          idx(&sri, &sci ,&INiNj);//a value inside the submat
-      abcc=*(mui*)  idx(&cri, &sci ,&conn);//the col index that gets a,b,or c
-      abcr=*(mui*)  idx(&cri, &sri ,&conn);
-      Mdst=         idx(&abcr,&abcc,&M);// ??? is this ok?
-      *Mdst+=(*src)*(AnD.A)/12.;
-      //printf("\n %f %u %u",*dst,abcr,abcc);
-	}
-    abcr=*(mui*)  idx(&cri  ,&sri  ,&conn);//the col index that get a,b, or c
-    src=          idx(&sri  ,&zero ,&INi); //value inside the submat
-    Lxdst=        idx(&abcr ,&zero ,&Lx);  //ptr to destination
-    Lydst=        idx(&abcr ,&zero ,&Ly);  //ptr to phi
-    pphix=        idx(&abcr ,&zero ,&phix);
-    pphiy=        idx(&abcr ,&zero ,&phiy);
-    pDx=          idx(&sri  ,&xc   ,&AnD.D);//ptr to derivative
-    pDy=          idx(&sri  ,&yc   ,&AnD.D);
-    *Lxdst+=(*src)*(*pA/3.) * (*pDx/(2*(*pA)))*(*pphix);//could elim A here
-    *Lydst+=(*src)*(*pA/3.) * (*pDy/(2*(*pA)))*(*pphiy);
-}
-  free(AnD.D.data);
-
-
-}
-
-
-
-
+  putsubmat(&M,&INiNj,&conn,&A,(1.0/12));
 
   
 
@@ -281,13 +225,6 @@ int main(){
   //freealloc
   
   mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&M));
-
-
-
-
-
-
-  return 0;
 };
 
 
