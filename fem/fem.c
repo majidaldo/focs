@@ -119,8 +119,8 @@ dercalcout calcdernA(mui *ti,matrixstruct *conn, matrixstruct *coords){
   mf abx,aby,acx,acy;
   mf *n1x,*n2x,*n3x,*n1y,*n2y,*n3y;
 #define abcxy(bc,xcyc) \
-                      -(*(mf*)idx(&bc,&xcyc,coords))	\
-                      +(*(mf*)idx(&a ,&xcyc,coords))
+                      +(*(mf*)idx(&bc,&xcyc,coords))	\
+                      -(*(mf*)idx(&a ,&xcyc,coords))
 
   matrixstruct D=makematrix(conn->ncols,2,floatt);//acol for x,y
   //for(ti=0;ti<A.nrows;ti++){
@@ -142,7 +142,7 @@ dercalcout calcdernA(mui *ti,matrixstruct *conn, matrixstruct *coords){
 
     dercalcout o;
     o.D=D;
-    o.A=(abx*acy-acx*aby)/2.0;
+    o.A=fabs(abx*acy-acx*aby)/2.0;//getting negative A
     return o;
 
 #undef abcxy
@@ -183,13 +183,13 @@ int main(){
 
   //global matrix
   matrixstruct  M=makematrix(coords.nrows,coords.nrows,floatt);
-  matrixstruct Lx=makematrix(coords.nrows,1           ,floatt);
-  matrixstruct Ly=makematrix(coords.nrows,1           ,floatt);
+  matrixstruct rx=makematrix(coords.nrows,1           ,floatt);
+  matrixstruct ry=makematrix(coords.nrows,1           ,floatt);
   initfltmatrix(0,&M);//set 0s
-  initfltmatrix(0,&Lx);
-  initfltmatrix(0,&Ly);
+  initfltmatrix(0,&rx);
+  initfltmatrix(0,&ry);
 
-  //fill
+  //local matrix
   mf aNi[3][1]={ {1}
 		,{1}
 		,{1}};//  *A/3
@@ -210,7 +210,7 @@ int main(){
   mui cri,xc=0,yc=1,zero=0;
   mui sri,sci;
   mui abcr,abcc;
-  mf *src,*Mdst,*Lxdst,*Lydst;
+  mf *src,*Mdst,*rxdst,*rydst;
   mf *pphix,*pphiy;
   mf *pDx,*pDy,*pA;
   dercalcout AnD;
@@ -218,7 +218,7 @@ int main(){
   for(cri=0;cri<conn.nrows;cri++){//0,1,2,3,4,5,6,7,8,9,10....
 
   AnD=calcdernA(&cri,&conn,&coords);// 1/2A
-  pA=&(AnD.A);printf("%f",*pA);
+  pA=&(AnD.A);
 
     //loop over submat
     for(sri=0;sri<INiNj.nrows;sri++){//0,1,2
@@ -232,14 +232,14 @@ int main(){
 	}
     abcr=*(mui*)  idx(&cri  ,&sri  ,&conn);//the col index that get a,b, or c
     src=          idx(&sri  ,&zero ,&INi); //value inside the submat
-    Lxdst=        idx(&abcr ,&zero ,&Lx);  //ptr to destination
-    Lydst=        idx(&abcr ,&zero ,&Ly);  //ptr to phi
-    pphix=        idx(&abcr ,&zero ,&phix);
+    rxdst=        idx(&abcr ,&zero ,&rx);  //ptr to destination
+    rydst=        idx(&abcr ,&zero ,&ry);  //
+    pphix=        idx(&abcr ,&zero ,&phix);//ptr to phi
     pphiy=        idx(&abcr ,&zero ,&phiy);
     pDx=          idx(&sri  ,&xc   ,&AnD.D);//ptr to derivative
     pDy=          idx(&sri  ,&yc   ,&AnD.D);
-    *Lxdst+=(*src)*(*pA/3.) * (*pDx/(2*(*pA)))*(*pphix);//could elim A here
-    *Lydst+=(*src)*(*pA/3.) * (*pDy/(2*(*pA)))*(*pphiy);
+    *rxdst+=(*src)*(*pA/3.) * (*pDx/(2*(*pA)))*(*pphix);//could elim A here
+    *rydst+=(*src)*(*pA/3.) * (*pDy/(2*(*pA)))*(*pphiy);
 }
   free(AnD.D.data);
 
@@ -247,10 +247,6 @@ int main(){
 }
 
 
-
-
-
-  
 
   //printmat(&M);
 
@@ -261,7 +257,7 @@ int main(){
 
 
 
-
+  //free M and L
 
   return 0;
 };
