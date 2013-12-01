@@ -119,7 +119,8 @@ structmatrix readphi(FILE *fp, mui nphi){
 
 typedef struct { structmatrix D; mf A;} dercalcout;
 dercalcout calcdernA(mui *ti,structmatrix *conn, structmatrix *coords){
-  //gives the derivative of element div by 2A
+  //should not have written it as a loop
+  //gives the derivative of element. div by 2A to get correct deivative
   //mui ti//,ci;//ti for triangle index
   mui ac=0,bc=1,cc=2,xc=0,yc=1;
   mui a,b,c;
@@ -296,6 +297,9 @@ int main(){
   mf *src,*Mcdst,*Mldst,*rxdst,*rydst;
   mf *pphix,*pphiy;
   mf *pDx,*pDy,*pA;
+  mf delNjphijx;//dot prod delNj*phij
+  mf delNjphijy;
+  mui idp;
   dercalcout AnD;
   //connectivity loop
   for(cri=0;cri<conn.nrows;cri++){//0,1,2,3,4,5,6,7,8,9,10....
@@ -303,7 +307,8 @@ int main(){
   AnD=calcdernA(&cri,&conn,&coords);// 1/2A
   pA=&(AnD.A);
 
-    //loop over submat
+  
+    //lhs stuff: loop over the M submat
     for(sri=0;sri<INiNj.nrows;sri++){//0,1,2
     for(sci=0;sci<INiNj.ncols;sci++){//0,1,2
       src=          idx(&sri, &sci ,&INiNj);//a value inside the submat
@@ -311,24 +316,33 @@ int main(){
       abcr=*(mui*)  idx(&cri, &sri ,&conn);
       Mcdst=        idx(&abcr,&abcc,&Mc);// ??? is this ok?
       *Mcdst+=(*src)*(*pA)/12.;
-      //printf("\n %f %u %u",*dst,abcr,abcc);
 	}
-
     abcr=*(mui*)  idx(&cri  ,&sri  ,&conn);//the col index that get a,b, or c
     Mldst=        idx(&abcr ,&zero ,&Ml);
+    *Mldst+=4.0*(*pA/12);
+    //rhs stuff
+    delNjphijx=0;
+    delNjphijy=0;
+    for(idp=0;idp<INi.nrows;idp++){//0,1,2 //could be integrated in previous loop
+      //but i wanted to isolate lhs and rhs avoid confusion
+      abcr=*(mui*)  idx(&cri  ,&idp  ,&conn);//node num
+      pphix=        idx(&abcr ,&zero ,&phix);//ptr to phi
+      pphiy=        idx(&abcr ,&zero ,&phiy);
+      pDx=          idx(&idp  ,&xc   ,&AnD.D);//ptr to derivative
+      pDy=          idx(&idp  ,&yc   ,&AnD.D);
+      delNjphijx+=(*pphix*(*pDx));
+      delNjphijy+=(*pphiy*(*pDy));
+    }
+    
     src=          idx(&sri  ,&zero ,&INi); //value inside the submat
     rxdst=        idx(&abcr ,&zero ,&rx);  //ptr to destination
     rydst=        idx(&abcr ,&zero ,&ry);  //
-    pphix=        idx(&abcr ,&zero ,&phix);//ptr to phi
-    pphiy=        idx(&abcr ,&zero ,&phiy);
-    pDx=          idx(&sri  ,&xc   ,&AnD.D);//ptr to derivative
-    pDy=          idx(&sri  ,&yc   ,&AnD.D);
-    *rxdst+=(*src)*(*pA/3.) * (*pDx/(2*(*pA)))*(*pphix);//could elim A here
-    *rydst+=(*src)*(*pA/3.) * (*pDy/(2*(*pA)))*(*pphiy);
-    *Mldst+=4.0*(*pA/12);
+    *rxdst+=(*src)*(*pA/3.) * (delNjphijx/(2*(*pA)));//could elim A here
+    *rydst+=(*src)*(*pA/3.) * (delNjphijy/(2*(*pA)));
+  
 }
-  free(AnD.D.data);
 
+  free(AnD.D.data);
 
   }//conn row iter
 
@@ -348,8 +362,8 @@ int main(){
   initfltmatrix(0,&u);
 
   //iterloop
-  mui i,equals,ii;
-  for(i=0;i<100;i++){
+  mui i,equals,ii,SOLNNITER=100;
+  for(i=0;i<SOLNNITER;i++){
     d=calcd(&Mc,&Ml,&u);
     up1=calcup1(&rx,&d,&Mlm1);
     free(d.data);
@@ -364,11 +378,11 @@ int main(){
     }
     free(u.data);
     u=up1;
-    printf("\n eq %u",equals);
-    if(equals==up1.nrows){break;}
+    if(equals==up1.nrows){printf("\nsoln converged\n");break;}
   }
+  if(i==SOLNNITER){printf("\n soln did not converge \n");}
 
-  // printmat(&u);
+  printmat(&u);
   
 
    //mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&Mc));
