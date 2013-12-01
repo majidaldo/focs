@@ -8,6 +8,7 @@
 ?:
 -dot prod rhs?
 -0s for missing phis?
+-4,4,4
 */
 
 
@@ -240,7 +241,16 @@ void printmat(structmatrix *mat){
     }
   }
 }
-//todo writemat
+void writemat(structmatrix *mat, char *fname){
+  FILE *f=fopen(fname,"w");
+  mui ri,ci;
+  for(ri=0;ri<mat->nrows;ri++){
+    for(ci=0;ci<mat->ncols;ci++){
+      if(mat->typenum==floatt){fprintf(f,"\n%u %u %f",ri,ci,*(mf*)idx(&ri,&ci,mat));}
+      else {fprintf(f,"\n%u %u %u",ri,ci,*(mui*)idx(&ri,&ci,mat));}
+    }
+  }
+}
 
 
 
@@ -356,34 +366,66 @@ int main(){
    *inv=pow(*(mf*)idx(&ri,&zero,&Ml),-1);
   }
 
-  structmatrix u  =makematrix(coords.nrows,1,floatt);
+  structmatrix vx =makematrix(coords.nrows,1,floatt);
+  structmatrix vy =makematrix(coords.nrows,1,floatt); 
   structmatrix up1=makematrix(coords.nrows,1,floatt); 
   structmatrix d;
-  initfltmatrix(0,&u);
+  initfltmatrix(0,&vx);
+  initfltmatrix(0,&vy);
 
-  //iterloop
   mui i,equals,ii,SOLNNITER=100;
-  for(i=0;i<SOLNNITER;i++){
-    d=calcd(&Mc,&Ml,&u);
-    up1=calcup1(&rx,&d,&Mlm1);
-    free(d.data);
-    equals=0;  
-    for(ii=0;ii<up1.nrows;ii++){
-      if( fabs(   (   *(mf*)idx(&ii,&zero,&up1)
-		      -*(mf*)idx(&ii,&zero,&u)
-		      )				\
-		  /  (*(mf*)idx(&ii,&zero,&u))
-		  ) < .01)
-	{equals++;}
-    }
-    free(u.data);
-    u=up1;
-    if(equals==up1.nrows){printf("\nsoln converged\n");break;}
-  }
-  if(i==SOLNNITER){printf("\n soln did not converge \n");}
+  mf EQUALTOL=.01;
 
-  printmat(&u);
-  
+ 
+  //iterloop
+  for(i=0;i<SOLNNITER;i++){
+    d=calcd(&Mc,&Ml,&vx);
+    up1=calcup1(&ry,&d,&Mlm1);
+    free(d.data);
+    equals=0;
+    for(ii=0;ii<up1.nrows;ii++){
+      if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
+  		      -*(mf*)idx(&ii,&zero,&vx)
+  		      )				\
+  		  /   (*(mf*)idx(&ii,&zero,&vx))
+  		  ) < EQUALTOL)
+  	{equals++;}
+    }
+    free(vx.data);
+    vx=up1;
+    if(equals==up1.nrows){printf("\nx soln converged");break;}
+  }
+  if(i==SOLNNITER){printf("\nx soln did not converge");}
+
+  //too lazy to make a function so i'm repeating code. bad majid.
+  //iterloop
+  for(i=0;i<SOLNNITER;i++){
+    d=calcd(&Mc,&Ml,&vy);
+    up1=calcup1(&ry,&d,&Mlm1);
+    free(d.data);
+    equals=0;
+    for(ii=0;ii<up1.nrows;ii++){
+      if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
+  		      -*(mf*)idx(&ii,&zero,&vy)
+  		      )				\
+  		  /   (*(mf*)idx(&ii,&zero,&vy))
+  		  ) < EQUALTOL)
+  	{equals++;}
+    }
+    free(vy.data);
+    vy=up1;
+    if(equals==up1.nrows){printf("\ny soln converged");break;}
+  }
+  if(i==SOLNNITER){printf("\ny soln did not converge");}
+
+
+
+  //OUTPUT
+  writemat(&coords,"coords");
+  writemat(&vx,"vx");
+  writemat(&vy,"vy");
+  writemat(&phix,"phix");
+  writemat(&phiy,"phiy");
 
    //mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&Mc));
 
@@ -396,7 +438,8 @@ int main(){
   free(conn.data);
   free(phix.data);
   free(phiy.data);
-  free(u.data);
+  free(vx.data);
+free(vy.data);
 
   return 0;
 };
