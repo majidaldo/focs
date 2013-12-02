@@ -4,7 +4,7 @@ import numpy as np
 d={}
 for atf in set(['vx','vy','coords','phi'
            # ,'d','mc' diagnostics
-            #,'ml','mlm1','mc','rx','ry','d'
+            #,'ml','mlm1','mc','rx','ry','d'x
             ]):
     fd=np.loadtxt(atf,dtype=[('m',int),('n',int),('v',float)])
     m=max(fd['m']+1)
@@ -24,8 +24,8 @@ import matplotlib
 from matplotlib.mlab import griddata
 from matplotlib import pyplot as plt
 # griddata and contour.
-xi = np.linspace(min(x),max(x),100)
-yi = np.linspace(min(y),max(y),100)
+xi = np.linspace(min(x),max(x),500)
+yi = np.linspace(min(y),max(y),500)
 zi = griddata(x,y,phi,xi,yi,interp='linear')
 
 def pltphi():

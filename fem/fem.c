@@ -255,47 +255,48 @@ void printmat(structmatrix *mat){
 }
 
 
-matrixstruct solve(matrixstruct *Mc,matrixstruct *Ml,
-  structmatrix vx =makematrix(coords.nrows,1,floatt);
-  structmatrix vy =makematrix(coords.nrows,1,floatt); 
+structmatrix solve(structmatrix *Mc,structmatrix *Ml, structmatrix *Mlm1
+		   ,structmatrix *r){
+  //might be a mem leak here
+  mui zero=0;
+  structmatrix v=makematrix(r->nrows,1,floatt);
   structmatrix up1;
   structmatrix d;
-  initfltmatrix(1,&vx);
-  initfltmatrix(1234,&vy);
+  initfltmatrix(1,&v);
 
   mui i,equals,ii,SOLNNITER=1000;
   mf EQUALTOL=.01;
  
   /* //iterloop */
   for(i=0;i<SOLNNITER;i++){
-    d=calcd(&Mc,&Ml,&vx);
-    up1=calcup1(&ry,&d,&Mlm1);
+    d=calcd(Mc,Ml,&v);
+    up1=calcup1(r,&d,Mlm1);
     free(d.data);
     equals=0;
     for(ii=0;ii<up1.nrows;ii++){
       if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
-  		      -*(mf*)idx(&ii,&zero,&vx)
-  		      )				\
-  		  	    /   (*(mf*)idx(&ii,&zero,&vx))
-  		  ) < EQUALTOL )
+      		      -*(mf*)idx(&ii,&zero,&v)
+      		      )				\
+      		  	    /   (*(mf*)idx(&ii,&zero,&v))
+      		  ) < EQUALTOL )
   	{equals++;}
     }
-    free(vx.data);
-    vx=up1;
-    if(equals==up1.nrows){printf("\nx soln converged");break;}
+    free(v.data);
+    v=up1;
+    if(equals==up1.nrows){printf("soln converged");break;}
   }
-  if(i==SOLNNITER){printf("\nx soln did not converge");}
+  if(i==SOLNNITER){printf("soln did not converge");}
 
+  return v;
+}
 
 
 
 
 int main(){
-	
-  printf("asdfgrgrgrhrhrdhd\n");
 
-  FILE *gfp=   fopen("grid0"  ,"r");
-  FILE *phifp=fopen( "phi0.0","r");
+  FILE *gfp=   fopen("grid4"  ,"r");
+  FILE *phifp=fopen( "phi4.1","r");
 
   //READING
   structmatrix coords=readcoords(gfp);
@@ -398,56 +399,9 @@ int main(){
    *inv=pow(*(mf*)idx(&ri,&zero,&Ml),-1);
   }
 
-  structmatrix vx =makematrix(coords.nrows,1,floatt);
-  structmatrix vy =makematrix(coords.nrows,1,floatt); 
-  structmatrix up1;
-  structmatrix d;
-  initfltmatrix(1,&vx);
-  initfltmatrix(1234,&vy);
 
-  mui i,equals,ii,SOLNNITER=1000;
-  mf EQUALTOL=.01;
- 
-  /* //iterloop */
-  for(i=0;i<SOLNNITER;i++){
-    d=calcd(&Mc,&Ml,&vx);
-    up1=calcup1(&ry,&d,&Mlm1);
-    free(d.data);
-    equals=0;
-    for(ii=0;ii<up1.nrows;ii++){
-      if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
-  		      -*(mf*)idx(&ii,&zero,&vx)
-  		      )				\
-  		  	    /   (*(mf*)idx(&ii,&zero,&vx))
-  		  ) < EQUALTOL )
-  	{equals++;}
-    }
-    free(vx.data);
-    vx=up1;
-    if(equals==up1.nrows){printf("\nx soln converged");break;}
-  }
-  if(i==SOLNNITER){printf("\nx soln did not converge");}
- 
-  /* //too lazy to make a function so i'm repeating code. bad majid. */
-  /* //iterloop */
-  for(i=0;i<SOLNNITER;i++){
-    d=calcd(&Mc,&Ml,&vy);
-    up1=calcup1(&ry,&d,&Mlm1);
-    free(d.data);
-    equals=0;
-    for(ii=0;ii<up1.nrows;ii++){
-      if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
-  		      -*(mf*)idx(&ii,&zero,&vy)
-  		      )				\
-		  	    /   (*(mf*)idx(&ii,&zero,&vy))
-  		  ) < EQUALTOL)
-  	{equals++;}
-    }
-    free(vy.data);
-    vy=up1;
-    if(equals==up1.nrows){printf("\ny soln converged");break;}
-  }
-  if(i==SOLNNITER){printf("\ny soln did not converge");}
+  printf("\nx "); structmatrix vx=solve(&Mc,&Ml,&Mlm1,&rx);
+  printf("\ny "); structmatrix vy=solve(&Mc,&Ml,&Mlm1,&ry);
 
 
   //OUTPUT
@@ -455,14 +409,12 @@ int main(){
   writemat(&vx,"vx");
   writemat(&vy,"vy");
   writemat(&phi,"phi");
-  /* //diag */
+   //diagnostics
   /* writemat(&Ml,"ml"); */
   /* writemat(&Mlm1,"mlm1"); */
   /* writemat(&Mc,"mc"); */
   /* writemat(&rx,"rx"); */
   /* writemat(&ry,"ry"); */
-
-   //mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&Mc));
 
   free(Mlm1.data);
   free(Ml.data);
