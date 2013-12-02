@@ -259,14 +259,12 @@ int main(){
   printf("asdfgrgrgrhrhrdhd\n");
 
   FILE *gfp=   fopen("grid0"  ,"r");
-  FILE *phixfp=fopen( "phi0.0","r");
-  FILE *phiyfp=fopen( "phi0.1","r");
+  FILE *phifp=fopen( "phi0.0","r");
 
   //READING
   structmatrix coords=readcoords(gfp);
   structmatrix conn=    readconn(gfp);
-  structmatrix phix=     readphi(phixfp,coords.nrows);
-  structmatrix phiy=     readphi(phiyfp,coords.nrows);
+  structmatrix phi=     readphi(phifp,coords.nrows);
 
   //ALLOC GLOBAL MATRICES
   structmatrix Mc=makematrix(coords.nrows,coords.nrows,floatt);
@@ -305,7 +303,7 @@ int main(){
   mui sri,sci;
   mui abcr,abcc;
   mf *src,*Mcdst,*Mldst,*rxdst,*rydst;
-  mf *pphix,*pphiy;
+  mf *pphi;
   mf *pDx,*pDy,*pA;
   mf delNjphijx;//dot prod delNj*phij
   mf delNjphijy;
@@ -336,12 +334,11 @@ int main(){
     for(idp=0;idp<INi.nrows;idp++){//0,1,2 //could be integrated in previous loop
       //but i wanted to isolate lhs and rhs avoid confusion
       abcr=*(mui*)  idx(&cri  ,&idp  ,&conn);//node num
-      pphix=        idx(&abcr ,&zero ,&phix);//ptr to phi
-      pphiy=        idx(&abcr ,&zero ,&phiy);
+      pphi=         idx(&abcr ,&zero ,&phi);//ptr to phi
       pDx=          idx(&idp  ,&xc   ,&AnD.D);//ptr to derivative
       pDy=          idx(&idp  ,&yc   ,&AnD.D);
-      delNjphijx+=(*pphix*(*pDx));
-      delNjphijy+=(*pphiy*(*pDy));
+      delNjphijx+=(*pphi*(*pDx));
+      delNjphijy+=(*pphi*(*pDy));
     }
     
     src=          idx(&sri  ,&zero ,&INi); //value inside the submat
@@ -424,8 +421,7 @@ int main(){
   writemat(&coords,"coords");
   writemat(&vx,"vx");
   writemat(&vy,"vy");
-  writemat(&phix,"phix");
-  writemat(&phiy,"phiy");
+  writemat(&phi,"phi");
 
    //mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&Mc));
 
@@ -436,10 +432,9 @@ int main(){
   free(ry.data);
   free(coords.data);
   free(conn.data);
-  free(phix.data);
-  free(phiy.data);
+  free(phi.data);
   free(vx.data);
-free(vy.data);
+  free(vy.data);
 
   return 0;
 };
