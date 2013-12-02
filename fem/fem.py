@@ -2,7 +2,10 @@ import numpy as np
 
 
 d={}
-for atf in ['vx','vy','coords','phi']:
+for atf in set(['vx','vy','coords','phi'
+           # ,'d','mc' diagnostics
+            #,'ml','mlm1','mc','rx','ry','d'
+            ]):
     fd=np.loadtxt(atf,dtype=[('m',int),('n',int),('v',float)])
     m=max(fd['m']+1)
     n=max(fd['n']+1)

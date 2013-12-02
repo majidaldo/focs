@@ -176,7 +176,7 @@ structmatrix matrixmul(structmatrix *A,structmatrix *B){
       mf sum=0;
       for(ici=0;ici<A->ncols;ici++){
 	//double a=Av(ri,ici),b=Bv(ci,ici);
-	;sum+=(Av(ri,ici)*Bv(ici,ci));}
+	sum+=(Av(ri,ici)*Bv(ici,ci));}
 
       Cv(ri,ci)=sum;
     }
@@ -190,26 +190,38 @@ structmatrix matrixmul(structmatrix *A,structmatrix *B){
 }
 
 
+
+void writemat(structmatrix *mat, char *fname){
+  FILE *f=fopen(fname,"w");
+  mui ri,ci;
+  for(ri=0;ri<mat->nrows;ri++){
+    for(ci=0;ci<mat->ncols;ci++){
+      if(mat->typenum==floatt){fprintf(f,"\n%u %u %f",ri,ci,*(mf*)idx(&ri,&ci,mat));}
+      else {fprintf(f,"\n%u %u %u",ri,ci,*(mui*)idx(&ri,&ci,mat));}
+    }
+  }
+}
+
+
+
 structmatrix calcd( structmatrix *Mc
 		    ,structmatrix *Ml
 		    ,structmatrix *u){
 
   structmatrix Mccpy=makematrix(Mc->nrows,Mc->ncols,floatt);
   memcpy(Mccpy.data,(Mc->data),sizeof(floatt)*(Mc->nrows*Mc->ncols)); 
-  structmatrix d=makematrix(Mc->nrows,1,floatt);
 
   //Mc - Ml
   mui ri,zero=0;
-  mf *mcv;
+  mf *mcv;//just subtract from diag
   for(ri=0;ri<Mc->nrows;ri++){
              mcv=idx(&ri,&ri  ,&Mccpy);
     *mcv=  *(mf*)idx(&ri,&ri  ,Mc)
          -(*(mf*)idx(&ri,&zero,Ml));
   }
 
-  d=matrixmul(&Mccpy,u);
+  structmatrix d=matrixmul(&Mccpy,u);
   free(Mccpy.data);
-
   return d;	   
 }
 structmatrix calcup1( structmatrix *r
@@ -241,16 +253,40 @@ void printmat(structmatrix *mat){
     }
   }
 }
-void writemat(structmatrix *mat, char *fname){
-  FILE *f=fopen(fname,"w");
-  mui ri,ci;
-  for(ri=0;ri<mat->nrows;ri++){
-    for(ci=0;ci<mat->ncols;ci++){
-      if(mat->typenum==floatt){fprintf(f,"\n%u %u %f",ri,ci,*(mf*)idx(&ri,&ci,mat));}
-      else {fprintf(f,"\n%u %u %u",ri,ci,*(mui*)idx(&ri,&ci,mat));}
+
+
+matrixstruct solve(matrixstruct *Mc,matrixstruct *Ml,
+  structmatrix vx =makematrix(coords.nrows,1,floatt);
+  structmatrix vy =makematrix(coords.nrows,1,floatt); 
+  structmatrix up1;
+  structmatrix d;
+  initfltmatrix(1,&vx);
+  initfltmatrix(1234,&vy);
+
+  mui i,equals,ii,SOLNNITER=1000;
+  mf EQUALTOL=.01;
+ 
+  /* //iterloop */
+  for(i=0;i<SOLNNITER;i++){
+    d=calcd(&Mc,&Ml,&vx);
+    up1=calcup1(&ry,&d,&Mlm1);
+    free(d.data);
+    equals=0;
+    for(ii=0;ii<up1.nrows;ii++){
+      if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
+  		      -*(mf*)idx(&ii,&zero,&vx)
+  		      )				\
+  		  	    /   (*(mf*)idx(&ii,&zero,&vx))
+  		  ) < EQUALTOL )
+  	{equals++;}
     }
+    free(vx.data);
+    vx=up1;
+    if(equals==up1.nrows){printf("\nx soln converged");break;}
   }
-}
+  if(i==SOLNNITER){printf("\nx soln did not converge");}
+
+
 
 
 
@@ -312,44 +348,43 @@ int main(){
   //connectivity loop
   for(cri=0;cri<conn.nrows;cri++){//0,1,2,3,4,5,6,7,8,9,10....
 
-  AnD=calcdernA(&cri,&conn,&coords);// 1/2A
-  pA=&(AnD.A);
-
+    AnD=calcdernA(&cri,&conn,&coords);// 1/2A
+    pA=&(AnD.A);
   
     //lhs stuff: loop over the M submat
     for(sri=0;sri<INiNj.nrows;sri++){//0,1,2
-    for(sci=0;sci<INiNj.ncols;sci++){//0,1,2
-      src=          idx(&sri, &sci ,&INiNj);//a value inside the submat
-      abcc=*(mui*)  idx(&cri, &sci ,&conn);//the col index that gets a,b,or c
-      abcr=*(mui*)  idx(&cri, &sri ,&conn);
-      Mcdst=        idx(&abcr,&abcc,&Mc);// ??? is this ok?
-      *Mcdst+=(*src)*(*pA)/12.;
-	}
-    abcr=*(mui*)  idx(&cri  ,&sri  ,&conn);//the col index that get a,b, or c
-    Mldst=        idx(&abcr ,&zero ,&Ml);
-    *Mldst+=4.0*(*pA/12);
-    //rhs stuff
-    delNjphijx=0;
-    delNjphijy=0;
-    for(idp=0;idp<INi.nrows;idp++){//0,1,2 //could be integrated in previous loop
-      //but i wanted to isolate lhs and rhs avoid confusion
-      abcr=*(mui*)  idx(&cri  ,&idp  ,&conn);//node num
-      pphi=         idx(&abcr ,&zero ,&phi);//ptr to phi
-      pDx=          idx(&idp  ,&xc   ,&AnD.D);//ptr to derivative
-      pDy=          idx(&idp  ,&yc   ,&AnD.D);
-      delNjphijx+=(*pphi*(*pDx));
-      delNjphijy+=(*pphi*(*pDy));
-    }
+      for(sci=0;sci<INiNj.ncols;sci++){//0,1,2
+	src=          idx(&sri, &sci ,&INiNj);//a value inside the submat
+	abcc=*(mui*)  idx(&cri, &sci ,&conn);//the col index that gets a,b,or c
+	abcr=*(mui*)  idx(&cri, &sri ,&conn);
+	Mcdst=        idx(&abcr,&abcc,&Mc);// ??? is this ok?
+	*Mcdst+=(*src)*(*pA)/12.;
+      }
+      abcr=*(mui*)  idx(&cri  ,&sri  ,&conn);//the col index that get a,b, or c
+      Mldst=        idx(&abcr ,&zero ,&Ml);
+      *Mldst+=4.0*(*pA/12);
+      //rhs stuff
+      delNjphijx=0;
+      delNjphijy=0;
+      for(idp=0;idp<INi.nrows;idp++){//0,1,2 //could be integrated in previous loop
+	//but i wanted to isolate lhs and rhs avoid confusion
+	abcr=*(mui*)  idx(&cri  ,&idp  ,&conn);//node num
+	pphi=         idx(&abcr ,&zero ,&phi);//ptr to phi
+	pDx=          idx(&idp  ,&xc   ,&AnD.D);//ptr to derivative
+	pDy=          idx(&idp  ,&yc   ,&AnD.D);
+	delNjphijx+=(*pphi*(*pDx));
+	delNjphijy+=(*pphi*(*pDy));
+      }
     
-    src=          idx(&sri  ,&zero ,&INi); //value inside the submat
-    rxdst=        idx(&abcr ,&zero ,&rx);  //ptr to destination
-    rydst=        idx(&abcr ,&zero ,&ry);  //
-    *rxdst+=(*src)*(*pA/3.) * (delNjphijx/(2*(*pA)));//could elim A here
-    *rydst+=(*src)*(*pA/3.) * (delNjphijy/(2*(*pA)));
+      src=          idx(&sri  ,&zero ,&INi); //value inside the submat
+      rxdst=        idx(&abcr ,&zero ,&rx);  //ptr to destination
+      rydst=        idx(&abcr ,&zero ,&ry);  //
+      *rxdst+=(*src)*(*pA/3.) * (delNjphijx/(2*(*pA)));//could elim A here
+      *rydst+=(*src)*(*pA/3.) * (delNjphijy/(2*(*pA)));
   
-}
+    }
 
-  free(AnD.D.data);
+    free(AnD.D.data);
 
   }//conn row iter
 
@@ -365,16 +400,15 @@ int main(){
 
   structmatrix vx =makematrix(coords.nrows,1,floatt);
   structmatrix vy =makematrix(coords.nrows,1,floatt); 
-  structmatrix up1=makematrix(coords.nrows,1,floatt); 
+  structmatrix up1;
   structmatrix d;
-  initfltmatrix(0,&vx);
-  initfltmatrix(0,&vy);
+  initfltmatrix(1,&vx);
+  initfltmatrix(1234,&vy);
 
-  mui i,equals,ii,SOLNNITER=100;
+  mui i,equals,ii,SOLNNITER=1000;
   mf EQUALTOL=.01;
-
  
-  //iterloop
+  /* //iterloop */
   for(i=0;i<SOLNNITER;i++){
     d=calcd(&Mc,&Ml,&vx);
     up1=calcup1(&ry,&d,&Mlm1);
@@ -384,8 +418,8 @@ int main(){
       if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
   		      -*(mf*)idx(&ii,&zero,&vx)
   		      )				\
-  		  /   (*(mf*)idx(&ii,&zero,&vx))
-  		  ) < EQUALTOL)
+  		  	    /   (*(mf*)idx(&ii,&zero,&vx))
+  		  ) < EQUALTOL )
   	{equals++;}
     }
     free(vx.data);
@@ -393,9 +427,9 @@ int main(){
     if(equals==up1.nrows){printf("\nx soln converged");break;}
   }
   if(i==SOLNNITER){printf("\nx soln did not converge");}
-
-  //too lazy to make a function so i'm repeating code. bad majid.
-  //iterloop
+ 
+  /* //too lazy to make a function so i'm repeating code. bad majid. */
+  /* //iterloop */
   for(i=0;i<SOLNNITER;i++){
     d=calcd(&Mc,&Ml,&vy);
     up1=calcup1(&ry,&d,&Mlm1);
@@ -405,7 +439,7 @@ int main(){
       if( fabs(   (    *(mf*)idx(&ii,&zero,&up1)
   		      -*(mf*)idx(&ii,&zero,&vy)
   		      )				\
-  		  /   (*(mf*)idx(&ii,&zero,&vy))
+		  	    /   (*(mf*)idx(&ii,&zero,&vy))
   		  ) < EQUALTOL)
   	{equals++;}
     }
@@ -416,12 +450,17 @@ int main(){
   if(i==SOLNNITER){printf("\ny soln did not converge");}
 
 
-
   //OUTPUT
   writemat(&coords,"coords");
   writemat(&vx,"vx");
   writemat(&vy,"vy");
   writemat(&phi,"phi");
+  /* //diag */
+  /* writemat(&Ml,"ml"); */
+  /* writemat(&Mlm1,"mlm1"); */
+  /* writemat(&Mc,"mc"); */
+  /* writemat(&rx,"rx"); */
+  /* writemat(&ry,"ry"); */
 
    //mui tr=911,tc=912;printf("%f",*(float*) idx(&tr,&tc,&Mc));
 
