@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <math.h>
 
+
+
 /*
-?:
--dot prod rhs?
--0s for missing phis?
--4,4,4
+lesson learned: don't make functions do too much. i wrote functions that
+loop within them. instead i should have written functions that take in
+indices as argument instead of computing all the indices on the call. 
+but some functions could make use of a previously calculated "state". 
+OO concepts could be applied.
 */
 
 
