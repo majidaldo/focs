@@ -6,7 +6,6 @@
 
 
 
-
 typedef float mf;//myfloat
 typedef unsigned int mui;
 
@@ -16,8 +15,8 @@ typedef unsigned int mui;
 typedef enum { normal, cancer, complx, necrotic } typecellenum;
 typedef struct structcell structcell;//why like this??
 struct structcell  {
-  structcell *next; //ptrs to neigbors
-  //llcells llnbrs;
+  structcell **next; //ptr to ptr to neigbors
+  mui nnbrs;
   typecellenum typenum;
   mf A;
 } ;
@@ -175,8 +174,7 @@ void printmat(structmatrix *mat){
 
 
 
-void *popcells(structmatrix *conn,structmatrix *coords){
-  mui zero=0;
+structcell *popcells(structmatrix *conn,structmatrix *coords){
 
   //array of pointers to structcells
   structcell *pcells=malloc(conn->nrows*sizeof(structcell));
@@ -191,29 +189,36 @@ void *popcells(structmatrix *conn,structmatrix *coords){
 
   //iterate over cells
   for(icell=0
-	;icell<3//icell<conn->nrows
+	;icell<conn->nrows
 	;icell++){
     //cell initializations
     pcc=&pcells[icell];
     pcc->A=calcA(&icell,conn,coords); 
     pcc->typenum=normal;
-    // cll.next=malloc(self)//kkeep adding to list thru mallo(ptr to cell)
+    pcc->next=malloc(sizeof(structcell*));//malloc so it doesn't go out of scope
+    *(pcc->next)=pcc;//ptr to self as a start
+    pcc->nnbrs=0;
 
     //for a node in this cell
     for(iabc=0;iabc<3;iabc++){
-      lookfor=*(mui*)idx(&iabc,&zero,conn);
+      lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node
 
       //look for it in other cells
       for(cellii=0;cellii<conn->nrows;cellii++){
 	if(cellii==icell){continue;}
+	//look in the three nodes of the other cells
 	for(abcii=0;abcii<3;abcii++){
 	  //innermost loop
-	  at=*(mui*)idx(&abcii,&zero,conn);
+	  at=*(mui*)idx(&cellii,&abcii,conn);
 	  if(at==lookfor){
-	    //pcll=exit this loop when found
+	    pcc->next=malloc(sizeof(structcell*));
+	    *(pcc->next)=&pcells[at];//aah i love C!
+	    (pcc->nnbrs)++;
+	    //membership est. exit loop
+	    break;
 	  }
-
 	}
+	//go on and look for node in other cells
       }
     
 
@@ -222,7 +227,7 @@ void *popcells(structmatrix *conn,structmatrix *coords){
 
   }    
     
-
+  return pcells;
 }
 
 
@@ -240,26 +245,22 @@ int main(){
   mui cri;
   mf A;
 
-  popcells(&conn,&coords);
+  structcell *pcells=popcells(&conn,&coords);
 
-  /* //connectivity loop */
-  /* for(cri=0 */
-  /* 	;cri<3//;cri<conn.nrows */
-  /* 	;cri++){//0,1,2,3,4,5,6,7,8,9,10.... */
-
-  /*   A=calcA(&cri,&conn,&coords);// 1/2A */
-  /*   printf("\n%f",A); */
-
-  /* }//conn row iter */
-
+  // printf("%d",pcells[0].nnbrs);
+  mui tc=0;
 
 
   //OUTPUT
-  //writemat(&coords,"coords");
+  writemat(&coords,"coords");
+  writemat(&conn,"conn");
+
 
   //free link ptrs
 
-  return 0;
+
+  return 0; 
+
 };
 
 
