@@ -298,8 +298,8 @@ structmatrix solve(structmatrix *Mc,structmatrix *Ml, structmatrix *Mlm1
 
 int main(){
 
-  FILE *gfp=   fopen("grid3"  ,"r");
-  FILE *phifp=fopen( "phi3.1","r");
+  FILE *gfp=   fopen("grid4"  ,"r");
+  FILE *phifp=fopen( "phi4.1","r");
 
   //READING
   structmatrix coords=readcoords(gfp);
