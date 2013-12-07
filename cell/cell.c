@@ -15,14 +15,14 @@ typedef unsigned int mui;
 typedef enum { normal, cancer, complx, necrotic } typecellenum;
 typedef struct structcell structcell;//why like this??
 struct structcell  {
-  structcell **next; //ptr to ptr to neigbors
   mui nnbrs;
   typecellenum typenum;
   mf A;
 } ;
-/* typedef struct { */
-/*   structcell *next; */
-/* } llcells; */
+typedef struct {
+  void *next;
+  structcell *curr;
+} link;
 
 
 //MATRIX DEFS
@@ -179,7 +179,7 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
   //array of pointers to structcells
   structcell *pcells=malloc(conn->nrows*sizeof(structcell));
   mui icell,cellii,iabc,abcii,lookfor,at;
-  structcell *pcc;
+  structcell *pcc,*outthere,*newoutthere;
   //llcells cll;
 
   //for acell: initit
@@ -195,15 +195,16 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
     pcc=&pcells[icell];
     pcc->A=calcA(&icell,conn,coords); 
     pcc->typenum=normal;
-    pcc->next=malloc(sizeof(structcell*));//malloc so it doesn't go out of scope
-    *(pcc->next)=pcc;//ptr to self as a start
+    outthere=malloc(sizeof(structcell*));//malloc so it doesn't go out of scope
+    outthere=pcc;//ptr to self as a start 
+    (pcc->next)=&outthere;//C is great *pcc->next pts to self here
     pcc->nnbrs=0;
 
     //for a node in this cell
     for(iabc=0;iabc<3;iabc++){
       lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node
 
-      //look for it in other cells
+      //...look for it in other cells
       for(cellii=0;cellii<conn->nrows;cellii++){
 	if(cellii==icell){continue;}
 	//look in the three nodes of the other cells
@@ -211,8 +212,9 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
 	  //innermost loop
 	  at=*(mui*)idx(&cellii,&abcii,conn);
 	  if(at==lookfor){
-	    pcc->next=malloc(sizeof(structcell*));
-	    *(pcc->next)=&pcells[at];//aah i love C!
+	    newoutthere=malloc(sizeof(structcell*));
+            outthere=newoutthere;
+	    newoutthere=&pcells[cellii];//aah i love C!
 	    (pcc->nnbrs)++;
 	    //membership est. exit loop
 	    break;
@@ -242,14 +244,20 @@ int main(){
 
   //ALLOC GLOBAL MATRICES
 
-  mui cri;
+  mui tri=123,tc=1;
   mf A;
 
   structcell *pcells=popcells(&conn,&coords);
 
-  // printf("%d",pcells[0].nnbrs);
-  mui tc=0;
-
+  mui inxt,istrt=6; printf("\nn%d",pcells[istrt].nnbrs);
+  inxt=istrt;
+  structcell *pnxt;
+  for(tc=0;tc<(pcells[istrt].nnbrs);tc++){
+    pnxt=*(pcells[inxt].next);
+    inxt=(pnxt-pcells);//ptr not void so dont need for /sizeof(structcell);
+    printf("\n%d",inxt);
+    break;
+  }
 
   //OUTPUT
   writemat(&coords,"coords");
@@ -262,5 +270,4 @@ int main(){
   return 0; 
 
 };
-
 
