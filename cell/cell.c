@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-
+ 
 
 typedef float mf;//myfloat
 typedef unsigned int mui;
@@ -14,15 +14,17 @@ typedef unsigned int mui;
 
 typedef enum { normal, cancer, complx, necrotic } typecellenum;
 typedef struct structcell structcell;//why like this??
+typedef struct structlink structlink;
 struct structcell  {
-  structcell **next; //ptr to ptr to neigbors
   mui nnbrs;
+  structlink *nbrs;
   typecellenum typenum;
   mf A;
 } ;
-/* typedef struct { */
-/*   structcell *next; */
-/* } llcells; */
+struct structlink {
+  structlink *next;
+  structcell *curr;
+} ;
 
 
 //MATRIX DEFS
@@ -173,15 +175,16 @@ void printmat(structmatrix *mat){
 
 
 
-
 structcell *popcells(structmatrix *conn,structmatrix *coords){
 
   //array of pointers to structcells
   structcell *pcells=malloc(conn->nrows*sizeof(structcell));
-  mui icell,cellii,iabc,abcii,lookfor,at;
+  mui icell,cellii,iabc,abcii			\
+    ,lookfor,at;//,lookfora,lookforb,lookforc
+    //,ata,atb,atc
+    //    ,ac=0,bc=1,cc=2;
   structcell *pcc;
-  //llcells cll;
-
+  structlink *plink=malloc(sizeof(structlink)),*pnewlink;
   //for acell: initit
   //for anode in acell:
   //look for it in all other cell
@@ -195,37 +198,69 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
     pcc=&pcells[icell];
     pcc->A=calcA(&icell,conn,coords); 
     pcc->typenum=normal;
-    pcc->next=malloc(sizeof(structcell*));//malloc so it doesn't go out of scope
-    *(pcc->next)=pcc;//ptr to self as a start
+    pcc->nbrs=plink;
+    plink->curr=pcc;//ptr to self as a start
     pcc->nnbrs=0;
 
-    //for a node in this cell
-    for(iabc=0;iabc<3;iabc++){
-      lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node
+    
+    for(cellii=0;cellii<conn->nrows;cellii++){//look at other nodes
+      if(cellii==icell){continue;}//except self
 
-      //look for it in other cells
-      for(cellii=0;cellii<conn->nrows;cellii++){
-	if(cellii==icell){continue;}
-	//look in the three nodes of the other cells
-	for(abcii=0;abcii<3;abcii++){
-	  //innermost loop
-	  at=*(mui*)idx(&cellii,&abcii,conn);
-	  if(at==lookfor){
-	    pcc->next=malloc(sizeof(structcell*));
-	    *(pcc->next)=&pcells[at];//aah i love C!
-	    (pcc->nnbrs)++;
-	    //membership est. exit loop
-	    break;
+      for(iabc=0;iabc<3;iabc++){
+	lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node */
+    	for(abcii=0;abcii<3;abcii++){ 
+ 	  at=*(mui*)idx(&cellii,&abcii,conn); 
+   	  if(at==lookfor){
+    	    pnewlink=malloc(sizeof(structlink));
+    	    pnewlink->curr=&pcells[cellii];//aah i love C!
+    	    plink->next=pnewlink;
+    	    plink=pnewlink;
+    	    (pcc->nnbrs)++;
+    	    //membership est. exit loop 
+	    goto memest;//i had too! needed to break out of two loops
 	  }
 	}
-	//go on and look for node in other cells
       }
+    memest: ;
+
+
+    }//look at other nodes
+
+
+
+  }
+
+    /* for(iabc=0;iabc<3;iabc++){ */
+    /*   lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node */
+/* 	  at=*(mui*)idx(&cellii,&abcii,conn); */
+
+    /*   //...look for it in other cells */
+    /*   for(cellii=0;cellii<conn->nrows;cellii++){ */
+    /* 	if(cellii==icell){continue;} */
+    /* 	//look in the three nodes of the other cells */
+    /* 	for(abcii=0;abcii<3;abcii++){ */
+    /* 	  //innermost loop */
+    /* 	  at=*(mui*)idx(&cellii,&abcii,conn); */
+    /* 	  if(at==lookfor){ */
+    /* 	    pnewlink=malloc(sizeof(structlink)); */
+    /* 	    pnewlink->curr=&pcells[cellii];//aah i love C! */
+    /* 	    plink->next=pnewlink; */
+    /* 	    plink=pnewlink; */
+    /* 	    (pcc->nnbrs)++; */
+    /* 	    //membership est. exit loop */
+    /* 	    break; */
+    /* 	  } */
+
+    /* 	} */
+
+    /* 	//go on and look for node in other cells */
+    /*   } */
     
 
-    }
+  /*   } */
     
 
-  }    
+  /* }     */
     
   return pcells;
 }
@@ -242,14 +277,21 @@ int main(){
 
   //ALLOC GLOBAL MATRICES
 
-  mui cri;
+  mui tri=123,tc=1;
   mf A;
 
   structcell *pcells=popcells(&conn,&coords);
 
-  // printf("%d",pcells[0].nnbrs);
-  mui tc=0;
-
+  mui inxt,istrt=6; printf("\nn%d",pcells[istrt].nnbrs);
+  inxt=istrt;
+  structlink *cl=pcells[istrt].nbrs,*ol;
+  structcell *cc=cl->curr;//begining w/ self
+  for(tc=0;tc<(pcells[istrt].nnbrs)+1;tc++){//bc strting w slf
+    printf("\n%d",cc-pcells);
+    cl=cl->next;
+    cc=cl->curr;
+    //break;
+  }
 
   //OUTPUT
   writemat(&coords,"coords");
@@ -262,5 +304,4 @@ int main(){
   return 0; 
 
 };
-
 
