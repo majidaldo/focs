@@ -184,7 +184,7 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
     //,ata,atb,atc
     //    ,ac=0,bc=1,cc=2;
   structcell *pcc;
-  structlink *plink=malloc(sizeof(structlink)),*pnewlink;
+  structlink *plink,*pnewlink;
   //for acell: initit
   //for anode in acell:
   //look for it in all other cell
@@ -198,6 +198,7 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
     pcc=&pcells[icell];
     pcc->A=calcA(&icell,conn,coords); 
     pcc->typenum=normal;
+    plink=malloc(sizeof(structlink));
     pcc->nbrs=plink;
     plink->curr=pcc;//ptr to self as a start
     pcc->nnbrs=0;
@@ -282,11 +283,11 @@ int main(){
 
   structcell *pcells=popcells(&conn,&coords);
 
-  mui inxt,istrt=6; printf("\nn%d",pcells[istrt].nnbrs);
+  mui inxt,istrt=0; printf("\nn%d",pcells[istrt].nnbrs);
   inxt=istrt;
-  structlink *cl=pcells[istrt].nbrs,*ol;
-  structcell *cc=cl->curr;//begining w/ self
-  for(tc=0;tc<(pcells[istrt].nnbrs)+1;tc++){//bc strting w slf
+  structlink *cl=pcells[istrt].nbrs->next,*ol;
+  structcell *cc=cl->curr;
+  for(tc=0;tc<(pcells[istrt].nnbrs);tc++){//bc strting w slf
     printf("\n%d",cc-pcells);
     cl=cl->next;
     cc=cl->curr;
