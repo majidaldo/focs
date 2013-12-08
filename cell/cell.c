@@ -21,7 +21,7 @@ struct structcell  {
   typecellenum typenum;
   mf A;
 } ;
-struct structlink {
+struct structlink {///begins with self as first member
   structlink *next;
   structcell *curr;
 } ;
@@ -228,44 +228,90 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
     }//look at other nodes
 
 
-
   }
 
-    /* for(iabc=0;iabc<3;iabc++){ */
-    /*   lookfor=*(mui*)idx(&icell,&iabc,conn);//look for this node */
-/* 	  at=*(mui*)idx(&cellii,&abcii,conn); */
-
-    /*   //...look for it in other cells */
-    /*   for(cellii=0;cellii<conn->nrows;cellii++){ */
-    /* 	if(cellii==icell){continue;} */
-    /* 	//look in the three nodes of the other cells */
-    /* 	for(abcii=0;abcii<3;abcii++){ */
-    /* 	  //innermost loop */
-    /* 	  at=*(mui*)idx(&cellii,&abcii,conn); */
-    /* 	  if(at==lookfor){ */
-    /* 	    pnewlink=malloc(sizeof(structlink)); */
-    /* 	    pnewlink->curr=&pcells[cellii];//aah i love C! */
-    /* 	    plink->next=pnewlink; */
-    /* 	    plink=pnewlink; */
-    /* 	    (pcc->nnbrs)++; */
-    /* 	    //membership est. exit loop */
-    /* 	    break; */
-    /* 	  } */
-
-    /* 	} */
-
-    /* 	//go on and look for node in other cells */
-    /*   } */
-    
-
-  /*   } */
-    
-
-  /* }     */
     
   return pcells;
 }
 
+
+bool prob_true(double p){ 
+    return rand() < p * (RAND_MAX+1.0);
+}
+
+
+void normal2cancer(structlink *pll){
+  mf allarea,nbrcancerarea=0;
+  structcell *pcell=pll->curr;//self
+  structlink *pcl;
+  structcell *pcc;
+ 
+  pcl=pcell->nbrs;//
+  pcc=pcl->curr;//self
+  allarea=pcell->A;
+  mui cellni; 
+  for(cellni=0;cellni<pcell->nnbrs;cellni++){//neighbor loop
+    pcl=pcl->next;
+    pcc=pcl->curr;
+	
+    if(pcc->typenum==cancer){nbrcancerarea+=pcc->A;}
+    allarea+=pcc->A;
+
+  }
+  
+  bool tf;
+  if(nbrcancerarea==0){tf=false;}
+  else{tf= prob_true(.2*(nbrcancerarea/allarea));}
+  //return tf;
+  if(tf==true){pcell->typenum=cancer;}
+}
+
+
+void cancer2complex(structlink *pll){
+  mui nbrnotnormal=0;
+  structcell *pcell=pll->curr;//self
+  structlink *pcl;
+  structcell *pcc;
+
+  pcl=pcell->nbrs;//
+  pcc=pcl->curr;//self
+  mui cellni;
+  for(cellni=0;cellni<pcell->nnbrs;cellni++){//neighbor loop
+    pcl=pcl->next;
+    pcc=pcl->curr;
+	
+    if(pcc->typenum!=normal){nbrnotnormal++;}
+
+  }
+
+  bool tf;
+  if(nbrnotnormal==pcell->nnbrs){tf=prob_true(.2);}
+  else{tf=false;}
+ //return tf;
+  if(tf==true){pcell->typenum=complx;}
+}
+
+
+void complex2necrotic(structlink *pll){
+  structcell *pcell=pll->curr;//self
+
+  bool tf;
+  if(complx==pcell->typenum){tf=prob_true(.2);}
+  else{tf=false;}
+ //return tf;
+  if(tf==true){pcell->typenum=necrotic;}
+
+}
+
+
+
+void writecells(FILE *f, structcell *pcells, mui ncells){
+  mui wi;
+  for(wi=0;wi<ncells;wi++){
+    fprintf(f,"%d ",pcells[wi].typenum);
+  }
+
+}
 
 
 int main(){
@@ -275,34 +321,70 @@ int main(){
   //READING
   structmatrix coords=readcoords(gfp);
   structmatrix conn=    readconn(gfp);
-
-  //ALLOC GLOBAL MATRICES
-
-  mui tri=123,tc=1;
-  mf A;
-
+  //POPULATE WITH INITIALS
   structcell *pcells=popcells(&conn,&coords);
+  //cancerize one
+  pcells[0].typenum=cancer;
 
-  mui inxt,istrt=0; printf("\nn%d",pcells[istrt].nnbrs);
-  inxt=istrt;
-  structlink *cl=pcells[istrt].nbrs->next,*ol;
-  structcell *cc=cl->curr;
-  for(tc=0;tc<(pcells[istrt].nnbrs);tc++){//bc strting w slf
-    printf("\n%d",cc-pcells);
-    cl=cl->next;
-    cc=cl->curr;
-    //break;
+
+  srand(13);
+
+  //ITERATE
+  mui icell,iter;
+  mui necrotics=0;
+  structcell *pcc;
+
+  const mui MAXITER=1000;
+  FILE *fo=fopen("cells","w");//char fname[5];
+  //for an iteration
+  for(iter=0;iter<MAXITER;iter++){
+
+    //sprintf(fname, "%d.cell", iter);
+    writecells(fo,pcells,conn.nrows);fprintf(fo,"\n");
+    if(necrotics==conn.nrows){break;}
+
+
+    //---------
+    for(icell=0;icell<conn.nrows;icell++){
+
+      pcc=&pcells[icell];
+      //rules
+      if     (pcc->typenum==normal){   normal2cancer(pcc->nbrs);}
+      else if(pcc->typenum==cancer){  cancer2complex(pcc->nbrs);}
+      else if(pcc->typenum==complx){complex2necrotic(pcc->nbrs);
+	if(pcc->typenum==necrotic){necrotics++;}}
+      //else it's necrotic no need to do anything
+    
+    }//cell iterator brace
+    //---------
+
+    printf("%d ",necrotics);
+
   }
 
-  //OUTPUT
+ 
+  //other OUTPUT
   writemat(&coords,"coords");
   writemat(&conn,"conn");
 
-
-  //free link ptrs
-
+  //FREE mallocs
+  //free links
+  structlink *ol,*cl;
+  mui ni;
+  for(icell=0;icell<conn.nrows;icell++){
+    ol=pcells[icell].nbrs;//lnk to self
+    for(ni=0;ni<(pcells[icell].nnbrs)+1;ni++){//+1 bc strting w slf
+      //advance    
+      cl=ol->next;
+      //burn the bridge
+      free(ol);
+    }//finally burn yourself
+    free(cl);
+  }
+  free(coords.data);
+  free(conn.data);
+  free(pcells);
 
   return 0; 
-
-};
+}
 
