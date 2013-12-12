@@ -2,7 +2,7 @@ import numpy as np
 
 
 d={}
-for atf in set(['vx','vy','coords','phi'
+for atf in set(['vx','vy','coords','phi','p'
            # ,'d','mc' diagnostics
             #,'ml','mlm1','mc','rx','ry','d'x
             ]):
@@ -19,21 +19,63 @@ y = d['coords'].T[1]
 phi = d['phi'].T[0]
 vx=d['vx'].T[0]
 vy=d['vy'].T[0]
+p=d['p'].T[0]
 
 import matplotlib
 from matplotlib.mlab import griddata
 from matplotlib import pyplot as plt
 # griddata and contour.
-xi = np.linspace(min(x),max(x),500)
-yi = np.linspace(min(y),max(y),500)
-zi = griddata(x,y,phi,xi,yi,interp='linear')
+xi = np.linspace(min(x),max(x),1e3)
+yi = np.linspace(min(y),max(y),1e3)
+
+phizi = griddata(x,y,phi,xi,yi,interp='linear')
+pzi = griddata(x,y,p,xi,yi,interp='linear')
+circm=np.zeros_like(phizi,dtype=bool)
+
+
+from numba import autojit
+@autojit
+def maskphi():
+    for ix,xx  in enumerate(xi):
+        for iy,yy in enumerate(yi):
+            if(xx**2+yy**2<.3**2):phizi[ix,iy]=True
+maskphi();
+                
+phima=np.ma.masked_array(phizi,mask=circm)
 
 def pltphi():
-    plt.contour(xi,yi,zi,15
-                 ,cmap=plt.cm.gray
+    return plt.contourf(xi,yi,phima
+                        ,25
+                 ,cmap=plt.cm.bone
              #,Normalize=plt.normalize(vmax=abs(zi).max(), vmin=-abs(zi).max())
              )
+   
+def pltv():#not used
+    return plt.quiver(x,y,vx,vy,(vx**2+vy**2)**.25#pzi
+                      ,cmap=plt.cm.hot#RdBu
+            )
 
-    
-def pltv():
-    plt.quiver(x,y,vx,vy)
+def pltpmm():
+    with open('pmax') as f: ipmax=int(f.read() )
+    with open('pmin') as f: ipmin=int(f.read())
+    for (al,ax,ay,clr) in [ ('min p',x[ipmin],y[ipmin],'b')
+                           ,('max p',x[ipmax],y[ipmax],'r')]:
+        plt.scatter([ax],[ay]
+                       ,s=40#,markersize=20
+                       ,color=clr#
+                       ,label=al
+                       )
+#    plt.legend(lns,['min'+str(p[ipmin]),'max'+str(p[ipmax])])
+
+
+def pltp():
+    return plt.contourf(xi,yi,pzi,50
+                 )
+
+
+def pltall():
+    pltphi();pltv();pltpmm();
+    plt.xlim(min(x),max(x))
+    plt.ylim(min(y),max(y))
+    plt.gcf().set_size_inches(3,3)
+    plt.legend();

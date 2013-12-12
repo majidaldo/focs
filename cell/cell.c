@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
- 
+
 
 typedef float mf;//myfloat
 typedef unsigned int mui;
@@ -12,7 +12,7 @@ typedef unsigned int mui;
 
 //CELL DEFS
 
-typedef enum { normal, cancer, complx, necrotic } typecellenum;
+typedef enum { normal=0, cancer=1, complx=2, necrotic=3 } typecellenum;
 typedef struct structcell structcell;//why like this??
 typedef struct structlink structlink;
 struct structcell  {
@@ -140,7 +140,7 @@ mf calcA(mui *ti,structmatrix *conn, structmatrix *coords){
     mf z=  +abx*acy
            -aby*acx ; 
     mf y=  +abz*acx
-      -abx*acz;
+           -abx*acz;
     mf x=  +aby*acz
 	   -abz*acy;
     mf A=pow(x*x+y*y+z*z,.5)/2;
@@ -240,7 +240,7 @@ bool prob_true(double p){
 }
 
 
-void normal2cancer(structlink *pll){
+void normal2cancer(structlink *pll, mf *p2cancer){
   mf allarea,nbrcancerarea=0;
   structcell *pcell=pll->curr;//self
   structlink *pcl;
@@ -261,13 +261,14 @@ void normal2cancer(structlink *pll){
   
   bool tf;
   if(nbrcancerarea==0){tf=false;}
-  else{tf= prob_true(.2*(nbrcancerarea/allarea));}
+  else{tf= prob_true(*p2cancer*(nbrcancerarea/allarea));}
   //return tf;
+  tf=true;//code check
   if(tf==true){pcell->typenum=cancer;}
 }
 
 
-void cancer2complex(structlink *pll){
+void cancer2complex(structlink *pll, mf *p2complex){
   mui nbrnotnormal=0;
   structcell *pcell=pll->curr;//self
   structlink *pcl;
@@ -285,20 +286,22 @@ void cancer2complex(structlink *pll){
   }
 
   bool tf;
-  if(nbrnotnormal==pcell->nnbrs){tf=prob_true(.2);}
+  if(nbrnotnormal==pcell->nnbrs){tf=prob_true(*p2complex);}
   else{tf=false;}
  //return tf;
+  tf=true;//code check
   if(tf==true){pcell->typenum=complx;}
 }
 
 
-void complex2necrotic(structlink *pll){
+void complex2necrotic(structlink *pll, mf *p2necrotic){
   structcell *pcell=pll->curr;//self
 
   bool tf;
-  if(complx==pcell->typenum){tf=prob_true(.2);}
+  if(complx==pcell->typenum){tf=prob_true(*p2necrotic);}
   else{tf=false;}
  //return tf;
+  tf=true;//code check
   if(tf==true){pcell->typenum=necrotic;}
 
 }
@@ -314,9 +317,16 @@ void writecells(FILE *f, structcell *pcells, mui ncells){
 }
 
 
-int main(){
+int main(int argc, char *argv[]){
+  if(argv[1]==NULL || argv[2]==NULL || argv[3]==NULL)
+    {printf("provide 3 args for probilities: \
+             normal->cancer, cancer->complex, complex->necrotic.");
+      exit(1);}
+  mf p2cancer;   sscanf(argv[1],"%f",&p2cancer);
+  mf p2complex;  sscanf(argv[2],"%f",&p2complex);
+  mf p2necrotic; sscanf(argv[3],"%f",&p2necrotic);
 
-  FILE *gfp=   fopen("face"  ,"r");
+  FILE *gfp=   fopen("test"  ,"r");
 
   //READING
   structmatrix coords=readcoords(gfp);
@@ -325,8 +335,7 @@ int main(){
   structcell *pcells=popcells(&conn,&coords);
   //cancerize one
   pcells[0].typenum=cancer;
-
-
+  
   srand(13);
 
   //ITERATE
@@ -336,6 +345,7 @@ int main(){
 
   const mui MAXITER=1000;
   FILE *fo=fopen("cells","w");//char fname[5];
+  printf("\nnum of necrotic cells");
   //for an iteration
   for(iter=0;iter<MAXITER;iter++){
 
@@ -349,9 +359,9 @@ int main(){
 
       pcc=&pcells[icell];
       //rules
-      if     (pcc->typenum==normal){   normal2cancer(pcc->nbrs);}
-      else if(pcc->typenum==cancer){  cancer2complex(pcc->nbrs);}
-      else if(pcc->typenum==complx){complex2necrotic(pcc->nbrs);
+      if     (pcc->typenum==normal){   normal2cancer(pcc->nbrs,&p2cancer);}
+      else if(pcc->typenum==cancer){  cancer2complex(pcc->nbrs,&p2complex);}
+      else if(pcc->typenum==complx){complex2necrotic(pcc->nbrs,&p2necrotic);
 	if(pcc->typenum==necrotic){necrotics++;}}
       //else it's necrotic no need to do anything
     

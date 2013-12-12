@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <float.h>
 
 
 /*
@@ -296,10 +296,12 @@ structmatrix solve(structmatrix *Mc,structmatrix *Ml, structmatrix *Mlm1
 
 
 
-int main(){
-
-  FILE *gfp=   fopen("grid4"  ,"r");
-  FILE *phifp=fopen( "phi4.1","r");
+int main(int argc, char *argv[]){
+ 
+  if(argv[1]==NULL){printf("provide grid as 1st arg")     ;exit(1);}
+  if(argv[2]==NULL){printf("provide potential as 2nd arg");exit(1);}
+  FILE *gfp=  fopen(argv[1],"r");//("grid4"  ,"r");
+  FILE *phifp=fopen(argv[2],"r");//( "phi4.1","r");
 
   //READING
   structmatrix coords=readcoords(gfp);
@@ -402,9 +404,30 @@ int main(){
    *inv=pow(*(mf*)idx(&ri,&zero,&Ml),-1);
   }
 
-
   printf("\nx "); structmatrix vx=solve(&Mc,&Ml,&Mlm1,&rx);
   printf("\ny "); structmatrix vy=solve(&Mc,&Ml,&Mlm1,&ry);
+
+  structmatrix p=makematrix(vx.nrows,1,floatt);
+  mf *pp,*pvx,*pvy,pmax=FLT_MAX, pmin=FLT_MIN;
+  mui imax,imin;
+  for(cri=0;cri<p.nrows;cri++){
+    pp= (mf*)idx(&cri,&zero,&p);
+    pvx=(mf*)idx(&cri,&zero,&vx);
+    pvy=(mf*)idx(&cri,&zero,&vy);
+    *pp=pow(pow(*pvx,2)+pow(*pvy,2),-.25);
+    
+    if(fabs(*(mf*)idx(&cri,&xc,&coords))<.5 &&
+       fabs(*(mf*)idx(&cri,&yc,&coords))<.5){
+      if(*pp>pmin){pmin=*pp; imax=cri;}
+      if(*pp<pmax){pmax=*pp; imin=cri;}
+    }
+  }
+  printf("\nmax p at x=%f y=%f"
+	 ,*(mf*)idx(&imax,&xc,&coords)
+	 ,*(mf*)idx(&imax,&yc,&coords));
+  printf("\nmin p at x=%f y=%f"
+	 ,*(mf*)idx(&imin,&xc,&coords)
+	 ,*(mf*)idx(&imin,&yc,&coords));
 
 
   //OUTPUT
@@ -412,6 +435,9 @@ int main(){
   writemat(&vx,"vx");
   writemat(&vy,"vy");
   writemat(&phi,"phi");
+  writemat(&p,"p");
+  FILE *fpmn=fopen("pmin","w"); fprintf(fpmn,"%d",imin);
+  FILE *fpmx=fopen("pmax","w"); fprintf(fpmx,"%d",imax);
    //diagnostics
   /* writemat(&Ml,"ml"); */
   /* writemat(&Mlm1,"mlm1"); */
@@ -429,6 +455,7 @@ int main(){
   free(phi.data);
   free(vx.data);
   free(vy.data);
+  free(p.data);
 
   return 0;
 };
