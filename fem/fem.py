@@ -58,8 +58,8 @@ def pltv():#not used
 def pltpmm():
     with open('pmax') as f: ipmax=int(f.read() )
     with open('pmin') as f: ipmin=int(f.read())
-    for (al,ax,ay,clr) in [ ('min p',x[ipmin],y[ipmin],'b')
-                           ,('max p',x[ipmax],y[ipmax],'r')]:
+    for (al,ax,ay,clr) in [ ('min p='+str((p[ipmin])),x[ipmin],y[ipmin],'b')
+                           ,('max p='+str(p[ipmax]),x[ipmax],y[ipmax],'r')]:
         plt.scatter([ax],[ay]
                        ,s=40#,markersize=20
                        ,color=clr#

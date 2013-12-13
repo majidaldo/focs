@@ -13,6 +13,7 @@ typedef unsigned int mui;
 //CELL DEFS
 
 typedef enum { normal=0, cancer=1, complx=2, necrotic=3 } typecellenum;
+//numbered to make sure it stays the same for post processing
 typedef struct structcell structcell;//why like this??
 typedef struct structlink structlink;
 struct structcell  {
@@ -54,14 +55,7 @@ void *idx(mui *ri, mui *ci, structmatrix *amat){
 #undef poffset
 }
 
-/* void initfltmatrix(mf iv, structmatrix *m){//could just do memset */
-/*   mui ri,ci; */
-/*   mf *v; */
-/*   for(ci=0;ci<m->ncols;ci++){ */
-/*   for(ri=0;ri<m->nrows;ri++){ */
-/*     v=(mf*) idx(&ri,&ci,m); *v=iv; //how do i assign directly? */
-/*   }} */
-/* } */
+
 
 typedef struct {
   structmatrix coords;
@@ -180,9 +174,7 @@ structcell *popcells(structmatrix *conn,structmatrix *coords){
   //array of pointers to structcells
   structcell *pcells=malloc(conn->nrows*sizeof(structcell));
   mui icell,cellii,iabc,abcii			\
-    ,lookfor,at;//,lookfora,lookforb,lookforc
-    //,ata,atb,atc
-    //    ,ac=0,bc=1,cc=2;
+    ,lookfor,at;
   structcell *pcc;
   structlink *plink,*pnewlink;
   //for acell: initit
@@ -263,7 +255,7 @@ void normal2cancer(structlink *pll, mf *p2cancer){
   if(nbrcancerarea==0){tf=false;}
   else{tf= prob_true(*p2cancer*(nbrcancerarea/allarea));}
   //return tf;
-  tf=true;//code check
+  //tf=true;//code check
   if(tf==true){pcell->typenum=cancer;}
 }
 
@@ -289,7 +281,7 @@ void cancer2complex(structlink *pll, mf *p2complex){
   if(nbrnotnormal==pcell->nnbrs){tf=prob_true(*p2complex);}
   else{tf=false;}
  //return tf;
-  tf=true;//code check
+  //tf=true;//code check
   if(tf==true){pcell->typenum=complx;}
 }
 
@@ -301,7 +293,7 @@ void complex2necrotic(structlink *pll, mf *p2necrotic){
   if(complx==pcell->typenum){tf=prob_true(*p2necrotic);}
   else{tf=false;}
  //return tf;
-  tf=true;//code check
+  //tf=true;//code check
   if(tf==true){pcell->typenum=necrotic;}
 
 }
@@ -319,14 +311,20 @@ void writecells(FILE *f, structcell *pcells, mui ncells){
 
 int main(int argc, char *argv[]){
   if(argv[1]==NULL || argv[2]==NULL || argv[3]==NULL)
-    {printf("provide 3 args for probilities: \
-             normal->cancer, cancer->complex, complex->necrotic.");
+    {printf("provide 3 args for probilities (factors): \
+normal->cancer, cancer->complex, complex->necrotic. ");
       exit(1);}
   mf p2cancer;   sscanf(argv[1],"%f",&p2cancer);
   mf p2complex;  sscanf(argv[2],"%f",&p2complex);
   mf p2necrotic; sscanf(argv[3],"%f",&p2necrotic);
 
-  FILE *gfp=   fopen("test"  ,"r");
+  mui randn=13;
+  if(argv[4]==NULL){
+    printf("4th optional arg for random number seed.\
+defaults to %d",randn);}
+  else{sscanf(argv[4],"%d",&randn);}
+
+  FILE *gfp=   fopen("face"  ,"r");
 
   //READING
   structmatrix coords=readcoords(gfp);
@@ -336,16 +334,16 @@ int main(int argc, char *argv[]){
   //cancerize one
   pcells[0].typenum=cancer;
   
-  srand(13);
+  srand(randn);
 
   //ITERATE
   mui icell,iter;
   mui necrotics=0;
   structcell *pcc;
 
-  const mui MAXITER=1000;
+  const mui MAXITER=10000;
   FILE *fo=fopen("cells","w");//char fname[5];
-  printf("\nnum of necrotic cells");
+  printf("\nnum of necrotic cells\n");
   //for an iteration
   for(iter=0;iter<MAXITER;iter++){
 
@@ -362,7 +360,8 @@ int main(int argc, char *argv[]){
       if     (pcc->typenum==normal){   normal2cancer(pcc->nbrs,&p2cancer);}
       else if(pcc->typenum==cancer){  cancer2complex(pcc->nbrs,&p2complex);}
       else if(pcc->typenum==complx){complex2necrotic(pcc->nbrs,&p2necrotic);
-	if(pcc->typenum==necrotic){necrotics++;}}
+	if(pcc->typenum==necrotic){necrotics++;}//add to necrotics if it changed
+      }
       //else it's necrotic no need to do anything
     
     }//cell iterator brace
@@ -371,11 +370,17 @@ int main(int argc, char *argv[]){
     printf("%d ",necrotics);
 
   }
-
+  if(iter<MAXITER){
+    printf("\nfinished in %d iterations",iter);
+    FILE *io=fopen("results","a+");
+    fprintf(io,"%f %f %f %d %d\n"
+	    ,p2cancer,p2complex,p2necrotic,randn,iter);
+  }
+  else{printf("\nmax iteration reached =%d",MAXITER);}
  
   //other OUTPUT
   writemat(&coords,"coords");
-  writemat(&conn,"conn");
+  writemat(&conn  ,"conn");
 
   //FREE mallocs
   //free links
@@ -384,12 +389,13 @@ int main(int argc, char *argv[]){
   for(icell=0;icell<conn.nrows;icell++){
     ol=pcells[icell].nbrs;//lnk to self
     for(ni=0;ni<(pcells[icell].nnbrs)+1;ni++){//+1 bc strting w slf
-      //advance    
+      //advance
       cl=ol->next;
       //burn the bridge
       free(ol);
+      ol=cl;
     }//finally burn yourself
-    free(cl);
+    //free(ol);//this segfaults.not sure if i wiped all the list
   }
   free(coords.data);
   free(conn.data);

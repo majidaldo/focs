@@ -422,13 +422,16 @@ int main(int argc, char *argv[]){
       if(*pp<pmax){pmax=*pp; imin=cri;}
     }
   }
-  printf("\nmax p at x=%f y=%f"
-	 ,*(mf*)idx(&imax,&xc,&coords)
-	 ,*(mf*)idx(&imax,&yc,&coords));
-  printf("\nmin p at x=%f y=%f"
-	 ,*(mf*)idx(&imin,&xc,&coords)
-	 ,*(mf*)idx(&imin,&yc,&coords));
-
+  printf("\nmax p= %f at x= %f y= %f"
+	 ,*(mf*)idx(&imax,&zero,&p)
+	 ,*(mf*)idx(&imax,&xc  ,&coords)
+	 ,*(mf*)idx(&imax,&yc  ,&coords));
+  
+  printf("\nmin p= %f at x= %f y= %f"
+	 ,*(mf*)idx(&imin,&zero,&p)
+	 ,*(mf*)idx(&imin,&xc  ,&coords)
+	 ,*(mf*)idx(&imin,&yc  ,&coords));
+ 
 
   //OUTPUT
   writemat(&coords,"coords");
